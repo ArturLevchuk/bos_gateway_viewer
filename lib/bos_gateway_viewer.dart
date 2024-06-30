@@ -118,75 +118,71 @@ class _BosGatewayWidgetState extends State<BosGatewayWidget> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Column(
-        children: [
-          Expanded(
-            child: Stack(
-              children: [
-                InAppWebView(
-                  initialSettings: settings,
-                  initialFile:
-                      kIsWeb ? WebViewConstants.widgetAssetsPath : null,
-                  initialUrlRequest: !kIsWeb
-                      ? URLRequest(
-                          url: WebUri(WebViewConstants.widgetWebviewUrl),
-                        )
-                      : null,
-                  onWebViewCreated: (controller) {},
-                  onPermissionRequest: (controller, request) async {
-                    return PermissionResponse(
-                      resources: request.resources,
-                      action: PermissionResponseAction.GRANT,
-                    );
-                  },
-                  onLoadStart: (controller, url) async {},
-                  onLoadStop: (controller, url) async {
-                    if (loading) {
-                      await startViewer(controller);
-                      setState(() {
-                        loading = false;
-                      });
-                    } else {
-                      updateViewerWithNewParams(
-                        webViewController: controller,
-                        path: newPath,
-                        props: newProps,
-                      );
-                    }
-                  },
-                  onUpdateVisitedHistory: (controller, url, androidIsReload) {
-                    final urlPath = url.toString();
-                    if (urlPath == WebViewConstants.widgetWebviewUrl) {
-                      return;
-                    }
-                    if (urlPath.contains("/widget/")) {
-                      final newPath = extractPath(urlPath);
-                      final newProps = getWidgetPropsFromUrl(urlPath);
-                      setState(() {
-                        this.newProps = newProps;
-                        this.newPath = newPath;
-                      });
-                      controller.loadUrl(
-                        urlRequest: URLRequest(
-                          url: WebUri(WebViewConstants.widgetWebviewUrl),
-                        ),
-                      );
-                    }
-                  },
-                  onConsoleMessage: (controller, consoleMessage) {
-                    if (kDebugMode) {
-                      print(consoleMessage);
-                    }
-                  },
-                ),
-                if (loading)
-                  const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-              ],
+      child: Expanded(
+        child: Stack(
+          children: [
+            InAppWebView(
+              initialSettings: settings,
+              initialFile:
+                  kIsWeb ? WebViewConstants.widgetAssetsPath : null,
+              initialUrlRequest: !kIsWeb
+                  ? URLRequest(
+                      url: WebUri(WebViewConstants.widgetWebviewUrl),
+                    )
+                  : null,
+              onWebViewCreated: (controller) {},
+              onPermissionRequest: (controller, request) async {
+                return PermissionResponse(
+                  resources: request.resources,
+                  action: PermissionResponseAction.GRANT,
+                );
+              },
+              onLoadStart: (controller, url) async {},
+              onLoadStop: (controller, url) async {
+                if (loading) {
+                  await startViewer(controller);
+                  setState(() {
+                    loading = false;
+                  });
+                } else {
+                  updateViewerWithNewParams(
+                    webViewController: controller,
+                    path: newPath,
+                    props: newProps,
+                  );
+                }
+              },
+              onUpdateVisitedHistory: (controller, url, androidIsReload) {
+                final urlPath = url.toString();
+                if (urlPath == WebViewConstants.widgetWebviewUrl) {
+                  return;
+                }
+                if (urlPath.contains("/widget/")) {
+                  final newPath = extractPath(urlPath);
+                  final newProps = getWidgetPropsFromUrl(urlPath);
+                  setState(() {
+                    this.newProps = newProps;
+                    this.newPath = newPath;
+                  });
+                  controller.loadUrl(
+                    urlRequest: URLRequest(
+                      url: WebUri(WebViewConstants.widgetWebviewUrl),
+                    ),
+                  );
+                }
+              },
+              onConsoleMessage: (controller, consoleMessage) {
+                if (kDebugMode) {
+                  print(consoleMessage);
+                }
+              },
             ),
-          ),
-        ],
+            if (loading)
+              const Center(
+                child: CircularProgressIndicator(),
+              ),
+          ],
+        ),
       ),
     );
   }
