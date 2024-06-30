@@ -33,8 +33,8 @@ class BosGatewayWidget extends StatefulWidget {
 
 class _BosGatewayWidgetState extends State<BosGatewayWidget> {
   bool loading = true;
-  bool pathWithProps = false;
-  String newProps = """'{}'""";
+  String newProps = "";
+  String newPath = "";
 
   WidgetSettings get widgetSettings => widget.widgetSettings;
   NearAuthCreds get nearAuthCreds => widget.nearAuthCreds;
@@ -55,18 +55,19 @@ class _BosGatewayWidgetState extends State<BosGatewayWidget> {
     );
   }
 
-  Future<void> updateViewerWithNewProps({
+  Future<void> updateViewerWithNewParams({
     required InAppWebViewController webViewController,
+    required String path,
     required String props,
   }) {
     final String startView =
-        '''window.startViewer("${nearAuthCreds.network.name}", "${widgetSettings.widgetSrc}", $props, "${nearAuthCreds.accountId}", "${nearAuthCreds.privateKey}");''';
+        '''window.startViewer("${nearAuthCreds.network.name}", "$path", $props, "${nearAuthCreds.accountId}", "${nearAuthCreds.privateKey}");''';
     return webViewController.evaluateJavascript(
       source: startView,
     );
   }
 
-  String getWidgetPropsFormUrl(String url) {
+  String getWidgetPropsFromUrl(String url) {
     final Uri uri = Uri.parse(url);
     if (uri.queryParameters.isEmpty) {
       return """'{}'""";
@@ -74,6 +75,27 @@ class _BosGatewayWidgetState extends State<BosGatewayWidget> {
     final Map<String, dynamic> params = uri.queryParameters;
     final jsonString = jsonEncode(params);
     return """'$jsonString'""";
+  }
+
+  String extractPath(String url) {
+    // Parse the URL
+    final uri = Uri.parse(url);
+
+    // Split the path into segments
+    List<String> segments = uri.pathSegments;
+
+    // Reconstruct the path by joining the relevant segments
+    String path =
+        segments.takeWhile((segment) => segment != 'widget').join('/') +
+            '/widget';
+
+    // Append the rest of the path after 'widget'
+    int widgetIndex = segments.indexOf('widget');
+    if (widgetIndex != -1 && widgetIndex + 1 < segments.length) {
+      path += '/' + segments.sublist(widgetIndex + 1).join('/');
+    }
+
+    return path;
   }
 
   @override
@@ -117,29 +139,32 @@ class _BosGatewayWidgetState extends State<BosGatewayWidget> {
                       action: PermissionResponseAction.GRANT,
                     );
                   },
-                  onLoadStart: (controller, url) {},
+                  onLoadStart: (controller, url) async {},
                   onLoadStop: (controller, url) async {
-                    if (!pathWithProps) {
+                    if (loading) {
                       await startViewer(controller);
+                      setState(() {
+                        loading = false;
+                      });
                     } else {
-                      await updateViewerWithNewProps(
+                      updateViewerWithNewParams(
                         webViewController: controller,
+                        path: newPath,
                         props: newProps,
                       );
                     }
-                    setState(() {
-                      loading = false;
-                    });
                   },
                   onUpdateVisitedHistory: (controller, url, androidIsReload) {
                     final urlPath = url.toString();
                     if (urlPath == WebViewConstants.widgetWebviewUrl) {
                       return;
-                    } else if (urlPath.contains(widgetSettings.widgetSrc)) {
-                      final newProps = getWidgetPropsFormUrl(urlPath);
+                    }
+                    if (urlPath.contains("/widget/")) {
+                      final newPath = extractPath(urlPath);
+                      final newProps = getWidgetPropsFromUrl(urlPath);
                       setState(() {
-                        pathWithProps = true;
                         this.newProps = newProps;
+                        this.newPath = newPath;
                       });
                       controller.loadUrl(
                         urlRequest: URLRequest(
